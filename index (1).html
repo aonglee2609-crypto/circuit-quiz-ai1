@@ -3,7 +3,7 @@
 <style>
 :root{--site-primary:#176b5b;--site-secondary:#d9eee8;--site-background:#f4f7f5;--site-on-primary:#fff;--site-on-secondary:#153d35;--site-on-background:#172622;--site-font-body:system-ui,'Noto Sans Thai',sans-serif;--site-font-heading:system-ui,'Noto Sans Thai',sans-serif;--site-heading-scale:1;--site-spacing-scale:1;--site-radius-scale:1;--site-decoration-opacity:1}
 *{box-sizing:border-box}body{margin:0;background:var(--site-background);color:var(--site-on-background);font-family:var(--site-font-body)}#app{min-height:100vh;background:var(--site-background);padding:20px;max-width:900px;margin:auto}.hero{background:var(--site-primary);color:white;padding:22px;border-radius:calc(22px * var(--site-radius-scale));}.hero h1{font-size:calc(25px * var(--site-heading-scale));margin:0 0 7px}.hero p{margin:0;opacity:.9;line-height:1.55}.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.panel{background:light-dark(#fff,#202a27);color:light-dark(#172622,#f1f7f4);border:1px solid light-dark(#dce6e1,#40504a);border-radius:16px;padding:16px;min-width:0}.panel h2{font-size:18px;margin:0 0 12px}.video-wrap{background:#101816;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;color:#c8d6d0}video{width:100%;height:100%;object-fit:contain}button{border:0;border-radius:12px;padding:12px 15px;background:var(--site-primary);color:white;font:600 15px var(--site-font-body);cursor:pointer}button.secondary{background:var(--site-secondary);color:var(--site-on-secondary)}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}textarea{width:100%;min-height:105px;resize:vertical;border-radius:12px;border:1px solid #9eafa7;padding:12px;font:15px var(--site-font-body);background:light-dark(white,#17211e);color:light-dark(#172622,#f1f7f4)}.muted{font-size:13px;opacity:.75;line-height:1.55}.status{margin-top:10px;padding:10px 12px;background:var(--site-secondary);color:var(--site-on-secondary);border-radius:10px;font-size:14px}.result{margin-top:12px}.qtitle{font-weight:700;line-height:1.6}.choice{padding:9px 11px;border:1px solid light-dark(#dce6e1,#40504a);border-radius:9px;margin-top:7px;line-height:1.5}.correct{border:2px solid #198754;background:light-dark(#e8f7ee,#193b2a)}.tag{font-size:12px;opacity:.7}.confidence{font-weight:700;color:#168653}.footer{margin-top:16px;font-size:12px;opacity:.7;text-align:center} @media(max-width:680px){#app{padding:12px}.layout{grid-template-columns:1fr}.hero{padding:18px}}
-</style></head><body><main id="app"><header class="hero"><h1>AI Camera · Circuit Quiz</h1><p>ผู้ช่วยอ่านโจทย์จากกล้องและค้นหาในคลังข้อสอบที่ได้รับมา 433 ข้อ ใช้สำหรับฝึกซ้อมและทบทวนคำตอบ</p></header>
+</style><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script></head><body><main id="app"><header class="hero"><h1>AI Camera · Circuit Quiz</h1><p>ผู้ช่วยอ่านโจทย์จากกล้องและค้นหาในคลังข้อสอบที่ได้รับมา 433 ข้อ ใช้สำหรับฝึกซ้อมและทบทวนคำตอบ</p></header>
 <div class="layout"><section class="panel"><h2>1 · กล้องจากโทรศัพท์อีกเครื่อง</h2><div class="video-wrap"><video id="video" autoplay muted playsinline></video><span id="placeholder">กด “เปิดกล้อง” แล้วเล็งไปที่โจทย์</span></div><div class="actions"><button id="start">เปิดกล้อง</button><button class="secondary" id="stop" disabled>ปิดกล้อง</button><button class="secondary" id="scan" disabled>สแกนภาพ</button></div><div class="status" id="camstatus">ยังไม่ได้เปิดกล้อง</div><p class="muted">การเปิดกล้องต้องอนุญาตจากเบราว์เซอร์ และต้องเปิดหน้านี้ผ่านบริบท HTTPS ที่รองรับกล้อง</p></section>
 <section class="panel"><h2>2 · ข้อความที่อ่านได้</h2><textarea id="ocr" placeholder="ข้อความ OCR จะปรากฏตรงนี้ หากอุปกรณ์ไม่รองรับ OCR อัตโนมัติ สามารถพิมพ์หรือวางข้อความจากโจทย์เพื่อค้นหาได้"></textarea><div class="actions"><button id="find">ค้นหาใน 433 ข้อ</button><button class="secondary" id="clear">ล้างข้อความ</button></div><div class="status" id="status">พร้อมค้นหาคำถาม</div><div id="result" class="result"></div></section></div>
 <div class="footer">ข้อมูลอ้างอิงจาก questions.txt ที่ผู้ใช้ส่งมา · ไม่เชื่อมต่อหรือแก้ไขคะแนนในเว็บไซต์เกม</div></main>
@@ -16,8 +16,55 @@ function search(){const raw=$('ocr').value.trim();if(!raw){$('status').textConte
 const best=ranked[0];$('result').innerHTML='';if(!best||best.score<.18){$('status').textContent='ยังจับคู่โจทย์ไม่ได้ชัดเจน ลองจัดกล้องให้ตรงหรือพิมพ์ข้อความเพิ่ม';return}
 $('status').textContent=`พบรายการใกล้เคียง ${ranked.filter(x=>x.score>=Math.max(.18,best.score-.08)).length} ข้อ จากทั้งหมด ${QUESTIONS.length}`;
 ranked.slice(0,3).forEach((item,i)=>{const q=item.q, card=document.createElement('div');card.className='panel';card.style.marginTop='10px';card.innerHTML=`<div class="tag">ข้อ ${q.id} · ${q.tag||'ไม่ระบุหมวด'} · ความตรงกันโดยประมาณ ${(item.score*100).toFixed(0)}%</div><div class="qtitle"></div><div class="opts"></div><div class="muted explain"></div>`;card.querySelector('.qtitle').textContent=q.q;const opts=card.querySelector('.opts');q.c.forEach((c,j)=>{const d=document.createElement('div');d.className='choice'+(j===q.a?' correct':'');d.textContent=['ก','ข','ค','ง'][j]+'. '+c+(j===q.a?'  ✓ เฉลยในคลัง':'');opts.appendChild(d)});card.querySelector('.explain').textContent=q.e?'คำอธิบาย: '+q.e:'';$('result').appendChild(card)})}
-async function scan(){if(!stream||busy)return;busy=true;try{if(!('TextDetector'in window)){ $('camstatus').textContent='เบราว์เซอร์นี้ยังไม่มี TextDetector สำหรับ OCR อัตโนมัติ ใช้กล้องดูภาพและพิมพ์/วางข้อความในช่องค้นหาได้';return}const detector=new TextDetector();const found=await detector.detect($('video'));const text=found.map(x=>x.rawValue).join('\n');if(text){$('ocr').value=text;search();$('camstatus').textContent='อ่านข้อความจากภาพแล้ว · '+new Date().toLocaleTimeString('th-TH')}else{$('camstatus').textContent='ยังอ่านข้อความไม่พบ ลองปรับระยะหรือแสง'} }catch(e){$('camstatus').textContent='OCR ใช้งานไม่ได้บนเบราว์เซอร์นี้: '+e.message}finally{busy=false}}
-$('start').onclick=async()=>{try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});$('video').srcObject=stream;$('placeholder').style.display='none';$('stop').disabled=false;$('scan').disabled=false;$('camstatus').textContent='เปิดกล้องแล้ว · กดสแกนภาพเพื่ออ่านโจทย์';}catch(e){$('camstatus').textContent='เปิดกล้องไม่ได้: '+e.message+' · ตรวจสอบสิทธิ์กล้องและการเปิดผ่าน HTTPS'}};
+async function scan(){
+  if(!stream || busy) return;
+
+  busy = true;
+
+  try {
+    $('camstatus').textContent = 'กำลังอ่านข้อความจากกล้อง...';
+
+    const video = $('video');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const result = await Tesseract.recognize(
+      canvas,
+      'tha+eng',
+      {
+        logger: m => {
+          if(m.status === 'recognizing text'){
+            $('camstatus').textContent =
+              'กำลังอ่านข้อความ ' +
+              Math.round(m.progress * 100) + '%';
+          }
+        }
+      }
+    );
+
+    const text = result.data.text.trim();
+
+    if(text){
+      $('ocr').value = text;
+      search();
+      $('camstatus').textContent = 'อ่านข้อความสำเร็จแล้ว';
+    }else{
+      $('camstatus').textContent =
+        'ไม่พบข้อความ กรุณาปรับแสงหรือระยะกล้อง';
+    }
+
+  }catch(e){
+    $('camstatus').textContent =
+      'OCR เกิดข้อผิดพลาด: ' + e.message;
+  }finally{
+    busy = false;
+  }
+}
 $('stop').onclick=()=>{if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;$('video').srcObject=null;$('placeholder').style.display='grid';$('stop').disabled=true;$('scan').disabled=true;$('camstatus').textContent='ปิดกล้องแล้ว'};
 $('scan').onclick=scan;$('find').onclick=search;$('clear').onclick=()=>{$('ocr').value='';$('result').innerHTML='';$('status').textContent='ล้างข้อความแล้ว'};
 </script></body></html>
